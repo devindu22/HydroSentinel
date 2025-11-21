@@ -1,0 +1,297 @@
+[
+    {
+        "id": "e5a61485ce96c791",
+        "type": "tab",
+        "label": "HydroSentinel",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "inV0",
+        "type": "blynk-iot-in-write",
+        "z": "e5a61485ce96c791",
+        "name": "Moisture In (V0)",
+        "pin": "0",
+        "pin_all": false,
+        "client": "client1",
+        "x": 200,
+        "y": 200,
+        "wires": [
+            [
+                "moisture_logic"
+            ]
+        ]
+    },
+    {
+        "id": "inV4",
+        "type": "blynk-iot-in-write",
+        "z": "e5a61485ce96c791",
+        "name": "Manual Pump (V4)",
+        "pin": "4",
+        "pin_all": false,
+        "client": "client1",
+        "x": 210,
+        "y": 260,
+        "wires": [
+            [
+                "manual_logic"
+            ]
+        ]
+    },
+    {
+        "id": "inV7",
+        "type": "blynk-iot-in-write",
+        "z": "e5a61485ce96c791",
+        "name": "Threshold Slider (V7)",
+        "pin": "7",
+        "client": "client1",
+        "x": 220,
+        "y": 340,
+        "wires": [
+            [
+                "threshold_store"
+            ]
+        ]
+    },
+    {
+        "id": "threshold_store",
+        "type": "change",
+        "z": "e5a61485ce96c791",
+        "name": "Store threshold",
+        "rules": [
+            {
+                "t": "set",
+                "p": "threshold",
+                "pt": "flow",
+                "to": "msg.payload",
+                "tot": "msg"
+            }
+        ],
+        "x": 440,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "moisture_logic",
+        "type": "function",
+        "z": "e5a61485ce96c791",
+        "name": "Auto Pump Logic",
+        "func": "// Moisture payload\nvar moisture = Number(msg.payload);\nvar threshold = flow.get(\"threshold\") || 35;\n\n// Hysteresis\nvar pumpState = flow.get(\"pumpState\") || 0;\nvar pumpOnLevel = threshold - 5;\nvar pumpOffLevel = threshold + 5;\n\nif (pumpState === 0 && moisture < pumpOnLevel) {\n    pumpState = 1;\n    flow.set(\"pumpState\", 1);\n    msg.action = \"ON\";\n}\nelse if (pumpState === 1 && moisture > pumpOffLevel) {\n    pumpState = 0;\n    flow.set(\"pumpState\", 0);\n    msg.action = \"OFF\";\n}\nelse {\n    msg.action = \"NONE\";\n}\n\nmsg.moisture = moisture;\nmsg.threshold = threshold;\nreturn msg;",
+        "outputs": 1,
+        "x": 430,
+        "y": 200,
+        "wires": [
+            [
+                "react_auto"
+            ]
+        ]
+    },
+    {
+        "id": "react_auto",
+        "type": "switch",
+        "z": "e5a61485ce96c791",
+        "name": "Apply Auto Decision",
+        "property": "action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OFF",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 670,
+        "y": 200,
+        "wires": [
+            [
+                "pump_on",
+                "set_red",
+                "log_on"
+            ],
+            [
+                "pump_off",
+                "set_green",
+                "log_off"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "manual_logic",
+        "type": "function",
+        "z": "e5a61485ce96c791",
+        "name": "Manual Pump Logic",
+        "func": "if (msg.payload == 1) {\n    flow.set(\"pumpState\", 1);\n    msg.action = \"ON\";\n} else {\n    flow.set(\"pumpState\", 0);\n    msg.action = \"OFF\";\n}\nreturn msg;",
+        "outputs": 1,
+        "x": 430,
+        "y": 260,
+        "wires": [
+            [
+                "react_manual"
+            ]
+        ]
+    },
+    {
+        "id": "react_manual",
+        "type": "switch",
+        "z": "e5a61485ce96c791",
+        "name": "Apply Manual Decision",
+        "property": "action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OFF",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 680,
+        "y": 260,
+        "wires": [
+            [
+                "pump_on",
+                "set_blue",
+                "log_on"
+            ],
+            [
+                "pump_off",
+                "set_idle",
+                "log_off"
+            ]
+        ]
+    },
+    {
+        "id": "pump_on",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Pump ON",
+        "pin": "3",
+        "client": "client1",
+        "x": 980,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "pump_off",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Pump OFF",
+        "pin": "3",
+        "client": "client1",
+        "x": 990,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "set_red",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Set RED LED",
+        "pin": "2",
+        "client": "client1",
+        "x": 1000,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "set_green",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Set GREEN LED",
+        "pin": "1",
+        "client": "client1",
+        "x": 1010,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "set_blue",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Set BLUE LED",
+        "pin": "3",
+        "client": "client1",
+        "x": 1000,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "set_idle",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Reset BLUE",
+        "pin": "3",
+        "client": "client1",
+        "x": 990,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "log_on",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Log ON",
+        "pin": "8",
+        "client": "client1",
+        "x": 980,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "log_off",
+        "type": "blynk-iot-out-write",
+        "z": "e5a61485ce96c791",
+        "name": "Log OFF",
+        "pin": "8",
+        "client": "client1",
+        "x": 980,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "client1",
+        "type": "blynk-iot-client",
+        "name": "Blynk Cloud",
+        "path": "blynk.cloud",
+        "key": "PGS_FKK9_bvIKYaYtAPR3kXi2rtHJ9e1",
+        "tmpl": "TMPL65I_UU9i9",
+        "dbg_all": false,
+        "dbg_log": false,
+        "dbg_prop": false,
+        "dbg_sync": false,
+        "dbg_low": false,
+        "dbg_pins": "",
+        "multi_cmd": false,
+        "enabled": true
+    },
+    {
+        "id": "dbdac3a283bed4fb",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-blynk-iot": "1.0.1"
+        }
+    }
+]
